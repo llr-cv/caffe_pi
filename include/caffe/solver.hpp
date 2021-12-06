@@ -54,9 +54,11 @@ class Solver {
   SolverAction::Enum GetRequestedAction();
   // The main entry of the solver function. In default, iter will be zero. Pass
   // in a non-zero iter number to resume training for a pre-trained net.
-  virtual void Solve(const char* resume_file = NULL);
-  inline void Solve(const string& resume_file) { Solve(resume_file.c_str()); }
-  void Step(int iters);
+  virtual Dtype Solve(const char* resume_file = NULL);
+  inline Dtype Solve(const string resume_file) { return Solve(resume_file.c_str()); }
+  Dtype Step(int iters);
+  Dtype StepMultiGPU(int iters);
+  Dtype get_smoothed_loss() {return smoothed_loss_ ;};
   // The Restore method simply dispatches to one of the
   // RestoreSolverStateFrom___ protected methods. You should implement these
   // methods to restore the state from the appropriate snapshot type.

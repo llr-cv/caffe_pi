@@ -1,0 +1,72 @@
+
+import os,shutil
+import hyperopt
+import caffe
+from caffe import layers as L,params as P,proto,to_proto
+import cv2
+import os
+
+def gen_solver(solver_file,net_file,args):
+
+  s=proto.caffe_pb2.SolverParameter()
+  s.net = net_file
+  #s.train_net =train_net
+  #s.test_net.append(test_net)
+  s.test_interval = 500     
+  s.test_iter.append(100)  
+  s.max_iter = 10000     
+  s.base_lr = args[0]   
+  s.momentum = 0.9   
+  s.weight_decay = args[1] 
+  s.lr_policy = 'inv'  
+  #s.stepsize=3000         
+  s.gamma = 0.0001     
+  s.power = 0.75
+  s.display = 100       
+  s.snapshot = 5000       
+  s.snapshot_prefix ='../../examples/mnist/lenet_py_' + str(args[0]) +'_' + str(args[1])
+  s.type ='SGD'      
+  s.solver_mode = proto.caffe_pb2.SolverParameter.GPU  
+  with open(solver_file, 'w') as f:
+    f.write(str(s))
+
+  if not os.path.exists(s.snapshot_prefix):
+    os.mkdir(s.snapshot_prefix)
+
+  shutil.copyfile(solver_file, s.snapshot_prefix + '/solver.prototxt' )
+  return s
+
+
+
+def train(args):
+  caffe.set_device(1)
+  caffe.set_mode_gpu()
+  solver_file = '../../examples/mnist/lenet_solver_py.prototxt'
+  net_file = '../../examples/mnist/lenet_train_test.prototxt'
+  s = gen_solver(solver_file,net_file, args)
+  caffe.set_log_path(str(s.snapshot_prefix + '/log_'))
+  solver = caffe.SGDSolver('../../examples/mnist/lenet_solver_py.prototxt')
+  loss =solver.solve()
+  #if not os.path.exists(log_file):
+  #  shutil.move(log_file, s.snapshot_prefix + '/caffe.log' )
+  print(args)
+  return loss 
+
+def hyperopt_train():
+  # define a search space
+  from hyperopt import hp
+  space = [ hp.uniform('base_lr', 0.01, 0.02), hp.uniform('weight_decay', 5e-4 , 5e-3) ]
+
+  # minimize the objective over the space
+  from hyperopt import fmin, tpe
+  best = fmin(train, space, algo=tpe.suggest, max_evals=5)
+
+  print best
+  print hyperopt.space_eval(space, best)
+
+def  main():
+  caffe.init_log(0, False )
+  hyperopt_train()
+
+if __name__ == "__main__":
+  main()

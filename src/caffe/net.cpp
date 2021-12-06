@@ -771,11 +771,7 @@ void Net<Dtype>::CopyTrainedLayersFrom(const NetParameter& param) {
 
 template <typename Dtype>
 void Net<Dtype>::CopyTrainedLayersFrom(const string& trained_filename) {
-  if (H5Fis_hdf5(trained_filename.c_str())) {
-    CopyTrainedLayersFromHDF5(trained_filename);
-  } else {
     CopyTrainedLayersFromBinaryProto(trained_filename);
-  }
 }
 
 template <typename Dtype>

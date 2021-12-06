@@ -59,13 +59,29 @@ void InitLogLevel(int level) {
   FLAGS_minloglevel = level;
   InitLog();
 }
-void InitLogLevelPipe(int level, bool stderr) {
+void InitLogLevelPipe(int level, bool std_err) {
   FLAGS_minloglevel = level;
-  FLAGS_logtostderr = stderr;
+  FLAGS_logtostderr = std_err;
   InitLog();
 }
+
+
+
+void set_log_path(const std::string& log_path){
+    FLAGS_logtostderr = false;
+    FLAGS_logbufsecs = 0;
+    ::google::SetLogDestination(google::GLOG_FATAL, log_path.c_str());
+    ::google::SetLogDestination(google::GLOG_ERROR, log_path.c_str());
+    ::google::SetLogDestination(google::GLOG_WARNING, log_path.c_str());
+    ::google::SetLogDestination(google::GLOG_INFO, log_path.c_str());
+}
+
 void Log(const string& s) {
   LOG(INFO) << s;
+}
+
+void FlushLogFiles(){
+   ::google::FlushLogFiles(::google::GLOG_ERROR);
 }
 
 void set_random_seed(unsigned int seed) { Caffe::set_random_seed(seed); }
@@ -388,7 +404,9 @@ BOOST_PYTHON_MODULE(_caffe) {
   bp::def("init_log", &InitLog);
   bp::def("init_log", &InitLogLevel);
   bp::def("init_log", &InitLogLevelPipe);
+  bp::def("set_log_path", &set_log_path);
   bp::def("log", &Log);
+  bp::def("flush_log",&FlushLogFiles);
   bp::def("has_nccl", &HasNCCL);
   bp::def("set_mode_cpu", &set_mode_cpu);
   bp::def("set_mode_gpu", &set_mode_gpu);
@@ -503,9 +521,10 @@ BOOST_PYTHON_MODULE(_caffe) {
     .add_property("iter", &Solver<Dtype>::iter)
     .def("add_callback", &Solver_add_callback<Dtype>)
     .def("add_callback", &Solver_add_nccl)
-    .def("solve", static_cast<void (Solver<Dtype>::*)(const char*)>(
+    .def("solve", static_cast<float (Solver<Dtype>::*)(const char*)>(
           &Solver<Dtype>::Solve), SolveOverloads())
     .def("step", &Solver<Dtype>::Step)
+    .def("step_multi_gpu", &Solver<Dtype>::StepMultiGPU)
     .def("restore", &Solver<Dtype>::Restore)
     .def("snapshot", &Solver<Dtype>::Snapshot)
     .def("share_weights", &share_weights)

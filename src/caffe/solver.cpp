@@ -198,7 +198,7 @@ void Solver<Dtype>::InitTestNets() {
 }
 
 template <typename Dtype>
-void Solver<Dtype>::Step(int iters) {
+Dtype Solver<Dtype>::Step(int iters) {
   const int start_iter = iter_;
   const int stop_iter = iter_ + iters;
   int average_loss = this->param_.average_loss();
@@ -280,11 +280,62 @@ void Solver<Dtype>::Step(int iters) {
       // Break out of training loop.
       break;
     }
+	
+	//if (smoothed_loss_ > 87) {
+	//	requested_early_exit_ = true;
+	//	LOG_IF(INFO, Caffe::root_solver()) << "break when loss overflow,  smoothed_loss :" << smoothed_loss_;
+	//	break;
+	//}
+	//if (iter_ > 50000 && smoothed_loss_ > 9.0) {
+	//	requested_early_exit_ = true;
+	//	LOG_IF(INFO, Caffe::root_solver()) << "break when loss misconvergence,  smoothed_loss :" << smoothed_loss_;
+	//	break;
+	//}
   }
+  return smoothed_loss_;
 }
 
 template <typename Dtype>
-void Solver<Dtype>::Solve(const char* resume_file) {
+Dtype Solver<Dtype>::StepMultiGPU(int iters) {
+	int start_iter = iter_;
+	Step(iters);
+	if (Caffe::root_solver()) {
+		LOG(INFO) << "root solver ";
+		// If we haven't already, save a snapshot after optimization, unless
+		// overridden by setting snapshot_after_train := false
+		if (param_.snapshot_after_train()
+			&& (!param_.snapshot() || iter_ % param_.snapshot() != 0)) {
+			Snapshot();
+		}
+	
+		// After the optimization is done, run an additional train and test pass to
+		// display the train and test loss/outputs if appropriate (based on the
+		// display and test_interval settings, respectively).  Unlike in the rest of
+		// training, for the train net we only run a forward pass as we've already
+		// updated the parameters "max_iter" times -- this final pass is only done to
+		// display the loss, which is computed in the forward pass.
+		if (param_.display() && iter_ % param_.display() == 0) {
+			int average_loss = this->param_.average_loss();
+			Dtype loss;
+			net_->Forward(&loss);
+
+			UpdateSmoothedLoss(loss, start_iter, average_loss);
+
+			LOG(INFO) << "Iteration " << iter_ << ", loss = " << smoothed_loss_;
+		}
+		if (param_.test_interval() && iter_ % param_.test_interval() == 0) {
+			TestAll();
+		}
+		LOG(INFO) << "Optimization Done. last loss = " << smoothed_loss_;
+		return smoothed_loss_;
+	}
+	else {
+		return smoothed_loss_;
+	}
+}
+
+template <typename Dtype>
+Dtype Solver<Dtype>::Solve(const char* resume_file) {
   CHECK(Caffe::root_solver());
   LOG(INFO) << "Solving " << net_->name();
   LOG(INFO) << "Learning Rate Policy: " << param_.lr_policy();
@@ -309,7 +360,7 @@ void Solver<Dtype>::Solve(const char* resume_file) {
   }
   if (requested_early_exit_) {
     LOG(INFO) << "Optimization stopped early.";
-    return;
+    return smoothed_loss_;
   }
   // After the optimization is done, run an additional train and test pass to
   // display the train and test loss/outputs if appropriate (based on the
@@ -329,7 +380,8 @@ void Solver<Dtype>::Solve(const char* resume_file) {
   if (param_.test_interval() && iter_ % param_.test_interval() == 0) {
     TestAll();
   }
-  LOG(INFO) << "Optimization Done.";
+  LOG(INFO) << "Optimization Done. last loss = " << smoothed_loss_;
+  return smoothed_loss_;
 }
 
 template <typename Dtype>

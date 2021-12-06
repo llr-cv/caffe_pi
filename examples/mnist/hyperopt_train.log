@@ -1,0 +1,8 @@
+[1, 2, 3]
+training end. snapshot:../../examples/mnist/snapshot_0.0171688525842_0.00286096290549, loss: 0.0332099422812
+training end. snapshot:../../examples/mnist/snapshot_0.0137712669205_0.00163477641104, loss: 0.0270386897027
+training end. snapshot:../../examples/mnist/snapshot_0.0190655370912_0.00313243822286, loss: 0.0361181683838
+training end. snapshot:../../examples/mnist/snapshot_0.0197196032331_0.00413387138592, loss: 0.0534601248801
+training end. snapshot:../../examples/mnist/snapshot_0.0156449816801_0.00307425698498, loss: 0.0378210134804
+{'base_lr': 0.013771266920538044, 'weight_decay': 0.0016347764110368887}
+(0.013771266920538044, 0.0016347764110368887)
